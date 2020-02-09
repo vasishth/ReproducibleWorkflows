@@ -22,7 +22,7 @@ abstract: |
   <!-- https://tinyurl.com/ybremelq -->
   
 keywords          : "data analysis;  open science; transparency; power analysis"
-wordcount         : "X"
+wordcount         : "4394 words"
 
 bibliography      : ["bibliography.bib"]
 
@@ -192,7 +192,7 @@ clozesd <- sd( articles$cloze, na.rm=T )
 
 Four linear mixed models are fit for the determiner. Most of the models fail to converge for me.
 
-```{r articleanalysis}
+```{r articleanalysis,cache=TRUE}
 # article models
 model1a <- lmer(base100 ~ lab*zcloze + ( zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = articles , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
 
@@ -232,10 +232,6 @@ model4n <- lmer(n400 ~   (zcloze | subject) + (zcloze  | item), data = nouns , c
 # compare models
 anova(model1n,model2n)
 
-# extract details of a model, and transform estimate and CI to raw (0% to 100%) cloze score
-summary(model3n)
-fixef(model3n)/ clozesd*100
-confint(model3n, method="Wald") / clozesd*100
 ```
 
 ## Results at the determiner
@@ -265,7 +261,7 @@ We will
 First, choose the relevant columns:
 
 ```{r subsetdata}
-dat<-select(articles,subject,item,lab,zcloze,base100)
+dat<-dplyr::select(articles,subject,item,lab,zcloze,base100)
 ```
 
 If we are using  all the data, it might be nicer if we re-name all the subjects by numerical id's instead of lab id plus the  subject  id.
@@ -420,9 +416,9 @@ b1<-round(summary(model3a)$coefficients[2,1],3)
 b1se<-round(summary(model3a)$coefficients[2,2],3)
 ```
 
-We can repeatedly (100 times) simulate estimates from the distribution Normal(\Sexpr{round(b1,2)},\Sexpr{round(b1se,2)}). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
+We can repeatedly (100 times) simulate estimates from the distribution Normal(`r round(b1,2)`,`r round(b1se,2)`). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
 
-But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on the estimated mean effect \Sexpr{b1}. One could also compute power based on the lower \Sexpr{b1-2*b1se}, and upper bounds \Sexpr{b1+2*b1se} of the estimated effect.  
+But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on the estimated mean effect `r b1`. One could also compute power based on the lower `r b1-2*b1se`, and upper bounds `r b1+2*b1se` of the estimated effect.  
 
 ```{r poweranalysismean,cache=TRUE}
 ## store for power:
@@ -443,7 +439,7 @@ power_mean<-mean(abs(tvals)>2)
 power_mean
 ```
 
-Power for the estimated mean from the existing studies is \Sexpr{round(power_mean,2)}.
+Power for the estimated mean from the existing studies is `r round(power_mean,2)`.
 
 I provide the code for computing power using the lower and upper bounds of the mean estimate, but I don't run the code here (by setting eval to FALSE), to save time. 
 
@@ -487,7 +483,7 @@ power_upper<-mean(abs(tvals)>2)
 power_upper
 ```
 
-In summary, the power estimate for the mean is \Sexpr{round(power_mean,2)}. If you run the estimates for the lower and upper bound, you will find that there is a lot  of  uncertainty on the power estimate; this uncertainty is coming from the fact that  we are unsure about the magnitude of the true effect.
+In summary, the power estimate for the mean is `r round(power_mean,2)`. If you run the estimates for the lower and upper bound, you will find that there is a lot  of  uncertainty on the power estimate; this uncertainty is coming from the fact that  we are unsure about the magnitude of the true effect.
 
 <style>
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
@@ -621,7 +617,7 @@ Now, with the above code, in principle we can display the effect of increasing s
 results<-rbind(repl4,repl6)
 results<-data.frame(results)
 colnames(results)<-c("nsubj","power estimate")
-kable(results, format = "latex")
+results
 ```
 
 Don't be surprised if the power doesn't go up much with sample size, or if it even goes down with increasing sample size. Because power is being computed using simulated data, we will see some variation in the power calculation from one simulation to another.
@@ -642,7 +638,7 @@ Note here that power computed from the data you already have is called **post-ho
 
 What we are doing is using existing data to estimate **variance  components**. Then, we use simulation to compute a power *distribution* for a range of plausible values of the effect of interest. The key problem here is figuring out what a plausible range of values of the effect is. Here, we simply used all the available data to get an estimate of the effect. 
 
-A better way to obtain estimates of the effect is by doing a meta-analysis. See @NicenboimPreactivation2019 for an estimate based on a meta-analysis. The estimate based on all publicly available data is: 0.11μV, 95%CrI =[0.05,0.16]. 
+A better way to obtain estimates of the effect is by doing a meta-analysis. See @NicenboimPreactivation2019 for an estimate based on a meta-analysis. The estimate based on all publicly available data is: 0.11 microvolts, 95% credible intervals [0.05,0.16]. 
 
 <style>
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
@@ -650,72 +646,9 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
 <div class = "blue">
 **Exercise**
 
-Use the existing data and the above meta-analysis estimates to work out estimates of power for a sample size of \Sexpr{334} subjects. Use the mean, lower, and upper bounds of the meta-analysis estimate to work out the power estimates.  
+Use the existing data and the above meta-analysis estimates to work out estimates of power for a sample size of 334 subjects. Use the mean, lower, and upper bounds of the meta-analysis estimate to work out the power estimates.  
 
 </div>
-
-## Model selection: Can the model recover the parameters under repeated sampling?
-
-A question that often arises  is: which model should we fit? @barr2013 suggest always fitting a maximal model, but this is not always possible with a frequentist linear mixed model (cf. a Bayesian approach where one can always fit a maximal model; but we won't discuss this today).
-
-There are many ways to decide on a model (see @hannesBEAP,@BatesEtAlParsimonious). Here I present one approach that I use. The idea here is: if a model specification is sensible, we should be able  to recover  the parameters in the model under repeated  sampling. 
-
-```{r parameterrecovery,cache=TRUE}
-nsim<-100
-int<-slope<-stddev<-sigma_u0<-sigma_u1<-sigma_w0<-
-  sigma_w1<-rho_u<-rho_w<-c()
-for(i in 1:nsim){
-  simdat<-gen_sim_norm(dat,
-               alpha=beta[1],
-               beta=b1,
-               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
-               sigma_e=sigma_e)
-m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),simdat,
-        control=lmerControl(calc.derivs=FALSE))
-## extract parameter estimates:
-int[i]<-summary(m)$coefficients[1,1]
-slope[i]<-summary(m)$coefficients[2,1]
-stddev[i]<-summary(m)$sigma
-subj_ranefsd<-attr(VarCorr(m)$subj,"stddev")
-sigma_u0[i]<-subj_ranefsd[1]
-sigma_u1[i]<-subj_ranefsd[2]
-subj_ranefcorr<-attr(VarCorr(m)$subj,"corr")
-rho_u[i]<-subj_ranefcorr[1,2]
-## assemble variance covariance matrix for items:
-item_ranefsd<-attr(VarCorr(m)$item,"stddev")
-sigma_w0[i]<-item_ranefsd[1]
-sigma_w1[i]<-item_ranefsd[2]
-item_ranefcorr<-attr(VarCorr(m)$item,"corr")
-rho_w[i]<-item_ranefcorr[1,2]
-}
-```
-
-One could automate the above steps by writing a function that extracts the parameters.
-
-Check if the repeatedly estimated parameters match the true values used to generate the data:
-
-```{r plotparameterrecovery,fig.height=6,fig.width=7}
-op<-par(mfrow=c(3,3),pty="s")
-hist(int,main="")
-abline(v=beta[1],lwd=2)
-hist(slope)
-abline(v=beta[2],lwd=2)
-hist(stddev)
-abline(v=sigma_e,lwd=2)
-hist(sigma_u0,xlim=c(0,0.5))
-abline(v=sqrt(Sigma_u[1,1]),lwd=2)
-hist(sigma_u1,xlim=c(0,0.5))
-abline(v=sqrt(Sigma_u[2,2]),lwd=2)
-hist(sigma_w0)
-abline(v=sqrt(Sigma_w[1,1]),lwd=2)
-hist(sigma_w1)
-abline(v=sqrt(Sigma_w[2,2]),lwd=2)
-hist(rho_u)
-abline(v=0.5,lwd=2)
-hist(rho_w)
-abline(v=0.5,lwd=2)
-```
-
 
 # Suggestions for making data and code public
 
