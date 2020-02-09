@@ -1,0 +1,658 @@
+---
+title             : "Guidelines for developing reproducible workflows"
+shorttitle        : "Reproducible workflows"
+
+author: 
+  - name          : "Shravan Vasishth"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "University of Potsdam"
+    email         : "vasishth@uni-potsdam.de"
+
+affiliation:
+  - id            : "1"
+    institution   : "University of Potsdam"
+
+authornote: |
+    Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480 – SFB 1287, project Q.
+ 
+abstract: |
+  These are some suggested guidelines on developing a reproducible workflow for  research. The guidelines are not meant to be hard and fast rules, but rather are intended to be suggestions. The ultimate aim of these guidelines is to allow other researchers to examine your data and code, and to use your research results for carrying out further studies. 
+  
+  <!-- https://tinyurl.com/ybremelq -->
+  
+keywords          : "data analysis;  open science; transparency; power analysis"
+wordcount         : "X"
+
+bibliography      : ["bibliography.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+toc               : true
+documentclass     : "apa6"
+classoption       : "doc"
+output            : papaja::apa6_pdf
+header-includes: |
+  \usepackage{gb4e}\noautomath
+  \usepackage{todonotes}
+  \usepackage[utf8]{inputenc}
+  \usepackage{fancyvrb}
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+```
+
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed,
+                      echo=TRUE)
+library(brms)
+library(lme4)
+library(tidyverse)
+library(ggplot2)
+library(lattice)
+```
+
+# Revision history
+
+- First version: 8 April 2017 following comments from Nieuwland and others.
+- Revision: 7 Feb 2020. Added power analyses.
+
+This file's name:
+
+```{r}
+knitr::current_input()
+```
+
+# Introduction: DeLong et al 2005 replication
+
+Recently, [Nieuwland et al](http://biorxiv.org/content/early/2017/02/25/111807) carried out an interesting series of replication attempts of the [DeLong et al 2005](http://search.proquest.com/openview/f549a27edaad0cedad040e0df278f9ec/1?pq-origsite=gscholar&cbl=44706) Nature Neuroscience paper. 
+
+DeLong and colleagues examined the effect of predicting an upcoming noun at the determiner region that precedes the noun. Consider the sentences below:
+
+\begin{exe}
+\ex \label{ex:delong}
+\begin{xlist}
+\ex The day was breezy so the boy went outside to fly \textbf{\underline{a} kite}. \label{ex:delongP}
+\ex The day was breezy so the boy went outside to fly \textbf{\underline{an} airplane}. \label{ex:delongU}
+\end{xlist}
+\end{exe}
+
+Participants were shown sentences ending with a predictable noun phrase, such as *'a kite'* in (\@ref(ex:delongP)), or an unpredictable one, such as *'an airplane'* in (\@ref(ex:delongU)). 
+
+In both examples, the determiners preceding the critical noun have the same meaning, so  there should  be no difference between the fit of *'a'* and *'an'* to the semantic context (i.e., both determiners should  incur the same integration costs). DeLong and colleagues showed that the amplitude of the negativity was smaller with increasing cloze probability at the determiner (and also at the noun; but that effect is expected given prior work, so not so surprising). 
+
+Nieuwland et al report a failure to replicate the original effect. Here, we focus only on the article data from the Nieuwland et al study. First, let's look at how Nieuwland et al made their data and code available; they did this even before the paper was published. 
+
+## Data and code from Nieuwland et al
+
+Here are Nieuwland et al's data and code. 
+
+- All materials were made available on the Open Science Foundation (OSF) repository: https://osf.io/eyzaq/
+- The tree structure of the directory was as follows when I downloaded it in 2017:
+
+```
+.
+|- 500ms_baseline
+      |- art_b5_P.txt
+      |- art_b5_R.txt
+      |- noun_b5_P.txt
+      |- noun_b5_R.txt
+|- BFs
+      |- Art_Bayes_Factor_Replication_Delong.txt
+      |- Nouns_Bayes_Factor_Replication_Delong.txt
+      |- orig_art.txt
+      |- orig_noun.txt
+      |- rep_art.txt
+      |- rep_noun.txt
+|- Nieuwland_etal_elife_accepted.pdf
+|- ReplicationFunctionsCorrelation.R
+|- artfinalP.txt
+|- artfinalR.txt
+|- cor_data_art.txt
+|- cor_data_noun.txt
+|- nounfinalP.txt
+|- nounfinalR.txt
+|- public_article_data.txt
+|- trial_level_data
+    |- art_replication_analysis_500msbaseline.txt
+    |- art_replication_analysis_original.txt
+    |- nouns_replication_analysis_500msbaseline.txt
+    |- nouns_replication_analysis_original.txt
+```
+
+**What is missing here is a README file. Many of the filenames are essentially self-explanatory, but not all.**
+
+## The R code
+
+The R code is presented as a file called public_script.txt.
+
+Some suggestions for improvement:
+- An R markdown file would have allowed the reader to see the precomputed output. One can always extract the R code from an R Markdown file called, say, yourfile.Rmd, by doing:
+
+```
+library(knitr)
+purl("yourfile.Rmd")
+```
+
+- Running SessionInfo() provides some minimal information on the packages used and their versions; this can help in diagnosing problems if the code fails to run due to lack of backward compatibility.
+- The call to the file has a hard-coded absolute path. This will fail to run on your computer:
+
+```
+#read article data
+articles <-read.delim("~/Desktop/DELONGR/public_article_data.txt", quote="")
+```
+
+**Suggestion**:  give relative path names (relative to current working directory).
+
+```{r loaddata}
+articles <-read.delim("NieuwlandEtAl2018/public_article_data.txt", 
+                      quote="")
+head(articles)
+```
+
+- Avoid using T and F for TRUE and FALSE. This can play havoc with your code if T and F are bound variables. RStudio allows auto-completion, so one can just type  T and hit tab, and one should get TRUE (same for F and FALSE).
+
+```
+clozemean <- mean( articles$cloze, na.rm=T )
+clozesd <- sd( articles$cloze, na.rm=T )
+```
+
+-  I could not find a column called n400, so this line doesn't run:
+
+```
+articles$base100 <- as.numeric(as.character(articles$n400))
+```
+
+
+Here is the code that I had in 2017 (it may have been updated since by Nieuwland et al):
+
+
+```{r originalcode}
+# R script for the DeLong replication data.
+# base100 is the N400 dependent measure with the pre-registered 100 ms baseline, which will be used throughout this script to keep it short
+# base200 has the 200 ms baseline, base500 the 500 ms baseline
+# filt01 has the 0.01 hz filtered data, and pre-stim the -500 to -100 ms data 
+#read article data: loaded above by SV.
+#articles <-read.delim("~/Desktop/DELONGR/public_article_data.txt", quote="")
+
+# make sure data is right format
+articles$item <-as.factor(articles$item)
+articles$cloze <- as.numeric(as.character(articles$cloze))
+## no column called n400:
+##articles$base100 <- ##as.numeric(as.character(articles$n400))
+
+# Z-transform cloze and store the mean and SD
+articles$zcloze <- scale(articles$cloze, center = TRUE, scale = TRUE)
+clozemean <- mean( articles$cloze, na.rm=T )
+clozesd <- sd( articles$cloze, na.rm=T )
+```
+
+Four linear mixed models are fit for the determiner. Most of the models fail to converge for me.
+
+```{r articleanalysis}
+# article models
+model1a <- lmer(base100 ~ lab*zcloze + ( zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = articles , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+
+model2a <- lmer(base100 ~ lab/zcloze + ( zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = articles , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+
+model3a <- lmer(base100 ~  zcloze + ( zcloze | subject) + (zcloze  | item),  data = articles, control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+
+model4a <- lmer(base100 ~         ( zcloze | subject) + (zcloze  | item),  data = articles ,  control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+
+# compare models
+anova(model1a,model2a)
+
+# extract details of a model, and transform estimate and CI to raw (0% to 100%) cloze score
+summary(model3a)
+fixef(model3a)/ clozesd*100
+confint(model3a, method="Wald") / clozesd*100
+```
+
+
+Linear mixed models for the noun:
+
+```{r nounanalysis,cache=TRUE}
+########################
+#### NOUNS
+
+#nouns <-read.delim("~/Desktop/DELONGR/public_noun_data.txt", quote="")
+nouns <-read.delim("NieuwlandEtAl2018/public_noun_data.txt", quote="")
+
+nouns$item <-as.factor(nouns$item)
+nouns$cloze <- as.numeric(as.character(nouns$cloze))
+nouns$n400 <- as.numeric(as.character(nouns$n400))
+
+nouns$zcloze <- scale(nouns$cloze, center = TRUE, scale = TRUE)
+clozemean <- mean( nouns$cloze, na.rm=T )
+clozesd <- sd( nouns$cloze, na.rm=T )
+
+model1n <- lmer(n400 ~  lab*zcloze + ( zcloze | subject) + ( zcloze  | item), contrasts=list( lab=contr.sum(9) ),data = nouns , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model2n <- lmer(n400 ~  lab + zcloze + (zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+model3n <- lmer(n400 ~  zcloze + (zcloze | subject) + (zcloze  | item), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+model4n <- lmer(n400 ~   (zcloze | subject) + (zcloze  | item), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+
+# compare models
+anova(model1n,model2n)
+
+# extract details of a model, and transform estimate and CI to raw (0% to 100%) cloze score
+summary(model3n)
+fixef(model3n)/ clozesd*100
+confint(model3n, method="Wald") / clozesd*100
+```
+
+## Results at the determiner
+
+Let's focus on just one of the models:
+
+```{r model3a}
+model3a <- lmer(base100 ~  zcloze + ( zcloze | subject) + (zcloze  | item),  data = articles, control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+summary(model3a)
+```
+
+# Planning a future study based on existing data
+
+This assumes a frequentist analysis.
+
+We will
+
+- begin with the existing data from Nieuwland et al 2018
+- first visualize the data
+- then use all available data to compute an estimate of the effect (meta-analysis)
+- compute sample size needed to achieve 80% power
+- carry out new study
+- an alternative Bayesian approach would be to use the estimate of the effect from the previous studies as an informative prior in a Bayesian analysis.
+
+## Subset the existing data
+
+First, choose the relevant columns:
+
+```{r subsetdata}
+dat<-select(articles,subject,item,lab,zcloze,base100)
+```
+
+If we are using  all the data, it might be nicer if we re-name all the subjects by numerical id's instead of lab id plus the  subject  id.
+
+```{r renamesubjects}
+## get subject names
+subjnames<-unique(dat$subject)
+## convert to numerical values:
+subjects_numerical<-data.frame(subjname=subjnames,subj=factor(1:length(subjnames)))
+
+## create new column with numerical id's:
+dat2<-merge(dat,subjects_numerical,by.x="subject",by.y="subjname")
+dat<-dat2
+head(dat)
+```
+
+## Visualize the data by subject and by item
+
+There is data from 9 labs. We can look at the by-subjects data for each lab. For example, here is the data from Birmingham.
+
+```{r bysubject,fig.width=7,fig.height=7}
+## save lab names:
+labnames<-as.character(unique(dat$lab))
+
+## Choose first lab's data:
+current_lab<-filter(dat,lab==labnames[1])
+
+xyplot(base100~zcloze|subj,current_lab,
+       panel = function(x, y) {
+         panel.xyplot(x, y)
+         panel.abline(lm(y ~ x))
+       },main="By subjects data")
+```
+
+```{r byitem,,fig.width=7,fig.height=7}
+xyplot(base100~zcloze|item,
+       current_lab,
+       panel = function(x, y) {
+         panel.xyplot(x, y)
+         panel.abline(lm(y ~ x))
+       },,main="By items data")
+```
+
+One problem with the above visualizations is that we would have to plot nine labs' plots separately and not get an overall impression of the by-subject variability in the zcloze effect. 
+
+```{r lmList}
+## fit separate linear models for each subject: 
+m_lmlist<-lmList(base100~zcloze|subj,dat)
+lmlist_coef<-summary(m_lmlist)$coefficients
+## extract by subject slopes:
+slopes<-lmlist_coef[,,2]
+means<-slopes[,1]
+lower<-means-2*slopes[,2]
+upper<-means+2*slopes[,2]
+
+subjects<-unique(dat$subj)
+
+slopes_summary<-data.frame(subj=subjects,
+                       means=means,
+                       lower=lower,upper=upper)
+
+## reorder means by magnitude:
+slopes_summary<-slopes_summary[order(slopes_summary$means),]
+
+p<-ggplot(slopes_summary,aes(x=subjects, y=means)) + 
+  geom_line() +
+  geom_point()+
+  geom_errorbar(aes(ymin=lower, ymax=upper), width=.2,
+                 position=position_dodge(0.05))+theme_bw()
+p
+```
+
+## Power analyses
+
+In order to understand the simulation approach I take here, it is important to understand how linear mixed models work. Here, we are going to switch to the slides accompanying this file, on linear mixed models introduction.
+
+### Computing power distribution for the current sample size
+
+#### Step 1: Extract estimates
+
+First, we extract the estimated parameter values from the model  that was fit to the whole data-set:
+
+```{r extractestimates}
+## extract estimates of fixed-effects parameters:
+beta<-summary(model3a)$coefficients[,1]
+## extract standard deviation estimate:
+sigma_e<-attr(VarCorr(model3a),"sc")
+## assemble variance covariance matrix for subjects:
+subj_ranefsd<-attr(VarCorr(model3a)$subj,"stddev")
+subj_ranefcorr<-attr(VarCorr(model3a)$subj,"corr")
+Sigma_u<-round(SIN::sdcor2cov(stddev=subj_ranefsd,
+                        corr=subj_ranefcorr),6)
+
+## assemble variance covariance matrix for items:
+item_ranefsd<-attr(VarCorr(model3a)$item,"stddev")
+item_ranefcorr<-attr(VarCorr(model3a)$item,"corr")
+Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
+                        corr=item_ranefcorr)
+```
+
+#### Step 2: Generate simulated data using estimates, compute power (or Type I error):
+
+Load a function to generate simulated data. I explain the function in the appendix.
+
+```{r generatefakedata}
+source("R/gen_sim_norm.R")
+```
+
+```{r producesimulatedvalues,cache=TRUE}
+## Example simulated data, generated several times:
+nsim<-100
+sim_values<-matrix(rep(NA,nsim*dim(dat)[1]),ncol = nsim)
+for(i in 1:nsim){
+simdat<-gen_sim_norm(dat,
+               alpha=beta[1],beta=beta[2],
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+sim_values[,i]<-simdat$simbase100
+}
+head(sim_values)
+```
+
+It is useful to compare real and simulated data, to check if the generative model produces  realistic data.
+
+```{r comparerealsim,fig.height=5,fig.weight=5}
+## Compare fake and simulated data:
+## the observed data:
+hist(simdat$base100,freq=FALSE,
+     ylim=c(0,0.06),
+     main="Real vs simulated data",
+     xlab="base100")
+## simulated data:
+for(i in 1:nsim){
+lines(density(sim_values[,i]),lty=1+i)
+}
+```
+
+Here, it looks like the model is producing realistic data.
+
+A critical question here is: what should the estimate of the effect be? Normally, for the problems I study, the estimate would be derived from a computational model or from a meta analysis of existing data. For now, we will take the estimate (mean and SE) from the data; this is just a convenient starting point. We will improve on this later in an exercise.
+
+```{r}
+b1<-round(summary(model3a)$coefficients[2,1],3)
+b1se<-round(summary(model3a)$coefficients[2,2],3)
+```
+
+We can repeatedly (100 times) simulate estimates from the distribution Normal(\Sexpr{round(b1,2)},\Sexpr{round(b1se,2)}). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
+
+But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on (a) the estimated mean effect \Sexpr{b1}, (b) the lower \Sexpr{b1-2*b1se},  and (c) the upper bounds \Sexpr{b1+2*b1se} of the estimated effect.  
+
+```{r poweranalysismean,cache=TRUE}
+## store for power:
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+  #print(paste("i=",i,sep=""))
+simdat<-gen_sim_norm(dat,
+               alpha=beta[1],
+               beta=b1, ## using the estimated slope
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+power_mean<-mean(abs(tvals)>2)
+```
+
+Power for the estimated mean from the existing studies is \Sexpr{round(power_mean,2)}.
+
+```{r poweranalysislower,cache=TRUE}
+## store for power:
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+  #print(paste("i=",i,sep=""))
+simdat<-gen_sim_norm(dat,
+               alpha=beta[1],
+               beta=b1-2*b1se, ## using the lower bound
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+power_lower<-mean(abs(tvals)>2)
+```
+
+Power for the estimated lower bound of the effect from the existing studies is \Sexpr{round(power_lower,2)}.
+
+```{r poweranalysisupper,cache=TRUE}
+## store for power:
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+  #print(paste("i=",i,sep=""))
+simdat<-gen_sim_norm(dat,
+               alpha=beta[1],
+               beta=b1+2*b1se, ## using the upper bound
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+power_upper<-mean(abs(tvals)>2)
+```
+
+Power for the estimated upper bound of the effect from the existing studies is \Sexpr{round(power_upper,2)}.
+
+In summary, the power estimate ranges from \Sexpr{round(power_lower,2)} to \Sexpr{round(power_upper,2)}, with a mean of \Sexpr{round(power_mean,2)}. 
+
+This  tells us that we have a lot  of  uncertainty on the power estimate; this uncertainty is coming from the fact that  we are unsure about the magnitude of the true effect.
+
+### Computing sample size needed for 80%  power
+
+Next, we want to know how many subjects we will need to obtain 80% power. To do this, we will  replicate our existing data frame n times, where n can 2, 3, 4, etc.
+
+For illustration, suppose our data frame is only the Birmingham data. We can use the data.table package to quickly replicate the data frame:
+
+```{r datareplicationexample}
+library(data.table)
+df <- data.frame(a = c(1,2,3), b = c(1,2,3))
+dt <- as.data.table(df)
+n <- 3
+dt[rep(dt[, .I], n)]
+```
+
+Select the relevant columns:
+
+```{r selectbirmdata}
+birm_dat<-dplyr::select(current_lab,
+                        subj,item,zcloze)
+head(birm_dat)
+```
+
+Generate replicates of the data
+
+```{r replicatebirmdata}
+birm_dat<-as.data.table(birm_dat)
+subjid<-birm_dat$subj
+n <- 3
+repl_dat<-birm_dat[rep(birm_dat[, .I], n)]
+dim(birm_dat)[1]*3
+dim(repl_dat)[1]
+
+## create new subject vector extended n times
+add_id<-rep(seq(100,100*n,by=100),each=dim(birm_dat)[1])
+repl_dat$subj<-rep(birm_dat$subj,n)+add_id
+head(repl_dat)
+length(unique(birm_dat$subj))*3
+length(unique(repl_dat$subj))
+```
+
+```{r computesamplesize,cache=TRUE}
+load("R/gen_sim_norm_samplesize.R")
+## test new function:
+simdat<-gen_sim_normsamplesize(dat=repl_dat,
+               alpha=beta[1],
+               beta=b1, ## using the estimated slope
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+
+nsim<-100
+tvals<-c()
+for(i in 1:nsim){
+simdat<-gen_sim_normsamplesize(repl_dat,
+               alpha=beta[1],
+               beta=b1, ## using the estimated slope
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),simdat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+## number of subjects:
+length(unique(simdat$subj))
+power_mean<-mean(abs(tvals)>2)
+power_mean
+```
+
+Obviously, 126 subjects is too  little here! We will need a *lot* more to achieve 80% power!  One can now re-run the above code with increasing numbers of subjects to get a power curve as a function of  the subject sample size.
+
+We can write a function to simplify the process of computing power as a function of subject sample size.
+
+```{r computepowerfunction}
+compute_power<-function(dat=birm_dat,
+                        replicates=3,nsims=100){
+dat<-as.data.table(dat)
+subjid<-dat$subj
+nrep <- replicates
+repl_dat<-dat[rep(dat[, .I], nrep)]
+
+## create new subject vector extended n times
+add_id<-rep(seq(100,100*nrep,by=100),each=dim(dat)[1])
+repl_dat$subj<-rep(dat$subj,nrep)+add_id
+
+nsim<-nsims
+tvals<-c()
+for(i in 1:nsim){
+simdat<-gen_sim_normsamplesize(repl_dat,
+               alpha=beta[1],
+               beta=b1, ## using the estimated slope
+               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
+               sigma_e=sigma_e)
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),
+        simdat,
+        control=lmerControl(calc.derivs=FALSE))
+tvals[i]<-summary(m)$coefficients[2,3]
+}
+power_mean<-mean(abs(tvals)>2)
+## return result with sample size:
+res<-c(length(unique(simdat$subj)),
+                power_mean)
+res
+}
+```
+
+```{r computesamplesize2,cache=TRUE}
+repl4<-compute_power(dat=birm_dat,
+              replicates = 4,
+              nsims=100)
+repl4
+repl6<-compute_power(dat=birm_dat,
+              replicates = 6,
+              nsims=100)
+repl6
+```
+
+Now, with the above code, in principle we can plot the effect of increasing subject sample size on power. I do a simplified version of such a plot below:
+
+```{r powersamplesizeplot}
+results<-rbind(repl4,repl6)
+plot(factor(results[,1]),results[,2],
+     type="p",xlab="subject sample size",
+     ylab="power")
+```
+
+Don't be surprised if the power doesn't go up much with sample size, or if it even goes down with increasing sample size. Because power is being computed using simulated data, we will see some variation in the power calculation from one simulation to another.
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+**Exercise (to do later)**
+
+This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates of the birmingham data, (use 100 simulations, not 10) and plot power against sample size.
+
+</div>
+
+# Suggestions for making data and code public
+
+- Develop and release a data management plan (required by the DFG). Example: https://osf.io/f9dqk/
+- Use R Markdown to produce commented and compiled code output so that the reader doesn't need to re-run code.
+- Once the analysis is complete, put all the code and data on OSF or github (or link github to osf). Example: https://github.com/vasishth/StatSigFilter
+- Make sure you don't depend on data and functions loaded via a hidden .Rprofile file that is local to your computer.
+- Avoid Excel files for storing data that will be loaded into R; save data in .csv or .txt files.
+- The directory structure for the data release should have a structure that the outsider can easily work out where everything is. The structure can be based on R package structures (discussed below), but doesn't have to be.
+- Create a README file that users can look at for guidance. Sometimes names of columns in data-frames are not easy to interpret. E.g., in eyetracking data, the user cnanot know  whether RP is regression probability or regression path duration.  
+- At the end of the R Markdown file, provide session information using SessionInfo().
+- Make sure that your R Markdown file runs! Ideally, download all the code and data onto another machine and check that it runs.
+-  If you have very large files that can't be saved on github, osf, etc., then store them on a (university) server and link to the files. Example: https://osf.io/reavs/
+
+
+# Appendix 1:  Explanation of the function in gen_sim_norm.R
+
+The way I generate data is by walking through the observed data's data frame row by row, and then generating simulated data for each row, using the following pieces of information:
+
+- the subject id
+- the item id
+- the parameter estimates from the model that was fit on the whole data-set
+
+to-do
+
+# Session information
+
+```{r sessioninfo}
+sessionInfo()
+```
