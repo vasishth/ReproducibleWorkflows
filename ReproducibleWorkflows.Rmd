@@ -66,12 +66,6 @@ library(lattice)
 - First version: 8 April 2017 following comments from Nieuwland and others.
 - Revision: 7 Feb 2020. Added power analyses.
 
-This file's name:
-
-```{r}
-knitr::current_input()
-```
-
 # Introduction: DeLong et al 2005 replication
 
 Recently, [Nieuwland et al](http://biorxiv.org/content/early/2017/02/25/111807) carried out an interesting series of replication attempts of the [DeLong et al 2005](http://search.proquest.com/openview/f549a27edaad0cedad040e0df278f9ec/1?pq-origsite=gscholar&cbl=44706) Nature Neuroscience paper. 
@@ -210,11 +204,6 @@ model4a <- lmer(base100 ~         ( zcloze | subject) + (zcloze  | item),  data 
 
 # compare models
 anova(model1a,model2a)
-
-# extract details of a model, and transform estimate and CI to raw (0% to 100%) cloze score
-summary(model3a)
-fixef(model3a)/ clozesd*100
-confint(model3a, method="Wald") / clozesd*100
 ```
 
 
@@ -353,6 +342,14 @@ p
 
 In order to understand the simulation approach I take here, it is important to understand how linear mixed models work. Here, we are going to switch to the slides accompanying this file, on linear mixed models introduction.
 
+Incidentally, in order to avoid messages about convergence failures, I am going to add the following to the lmer function:
+
+```
+control=lmerControl(calc.derivs=FALSE)
+```
+
+This is just for convenience; normally, we would have to worry about convergence problems.
+
 ### Computing power distribution for the current sample size
 
 #### Step 1: Extract estimates
@@ -387,7 +384,7 @@ source("R/gen_sim_norm.R")
 
 ```{r producesimulatedvalues,cache=TRUE}
 ## Example simulated data, generated several times:
-nsim<-100
+nsim<-10
 sim_values<-matrix(rep(NA,nsim*dim(dat)[1]),ncol = nsim)
 for(i in 1:nsim){
 simdat<-gen_sim_norm(dat,
@@ -425,7 +422,7 @@ b1se<-round(summary(model3a)$coefficients[2,2],3)
 
 We can repeatedly (100 times) simulate estimates from the distribution Normal(\Sexpr{round(b1,2)},\Sexpr{round(b1se,2)}). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
 
-But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on (a) the estimated mean effect \Sexpr{b1}, (b) the lower \Sexpr{b1-2*b1se},  and (c) the upper bounds \Sexpr{b1+2*b1se} of the estimated effect.  
+But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on the estimated mean effect \Sexpr{b1}. One could also compute power based on the lower \Sexpr{b1-2*b1se}, and upper bounds \Sexpr{b1+2*b1se} of the estimated effect.  
 
 ```{r poweranalysismean,cache=TRUE}
 ## store for power:
@@ -438,16 +435,19 @@ simdat<-gen_sim_norm(dat,
                beta=b1, ## using the estimated slope
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
                sigma_e=sigma_e)
-m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),simdat,
         control=lmerControl(calc.derivs=FALSE))
 tvals[i]<-summary(m)$coefficients[2,3]
 }
 power_mean<-mean(abs(tvals)>2)
+power_mean
 ```
 
 Power for the estimated mean from the existing studies is \Sexpr{round(power_mean,2)}.
 
-```{r poweranalysislower,cache=TRUE}
+I provide the code for computing power using the lower and upper bounds of the mean estimate, but I don't run the code here (by setting eval to FALSE), to save time. 
+
+```{r poweranalysislower,cache=TRUE,eval=FALSE}
 ## store for power:
 nsim<-100
 tvals<-c()
@@ -458,16 +458,16 @@ simdat<-gen_sim_norm(dat,
                beta=b1-2*b1se, ## using the lower bound
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
                sigma_e=sigma_e)
-m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),
+        simdat,
         control=lmerControl(calc.derivs=FALSE))
 tvals[i]<-summary(m)$coefficients[2,3]
 }
 power_lower<-mean(abs(tvals)>2)
+power_lower
 ```
 
-Power for the estimated lower bound of the effect from the existing studies is \Sexpr{round(power_lower,2)}.
-
-```{r poweranalysisupper,cache=TRUE}
+```{r poweranalysisupper,cache=TRUE,eval=FALSE}
 ## store for power:
 nsim<-100
 tvals<-c()
@@ -478,24 +478,39 @@ simdat<-gen_sim_norm(dat,
                beta=b1+2*b1se, ## using the upper bound
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
                sigma_e=sigma_e)
-m<-lmer(simbase100~zcloze+(1+zcloze|subject)+(1+zcloze|item),simdat,
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),
+        simdat,
         control=lmerControl(calc.derivs=FALSE))
 tvals[i]<-summary(m)$coefficients[2,3]
 }
 power_upper<-mean(abs(tvals)>2)
+power_upper
 ```
 
-Power for the estimated upper bound of the effect from the existing studies is \Sexpr{round(power_upper,2)}.
+In summary, the power estimate for the mean is \Sexpr{round(power_mean,2)}. If you run the estimates for the lower and upper bound, you will find that there is a lot  of  uncertainty on the power estimate; this uncertainty is coming from the fact that  we are unsure about the magnitude of the true effect.
 
-In summary, the power estimate ranges from \Sexpr{round(power_lower,2)} to \Sexpr{round(power_upper,2)}, with a mean of \Sexpr{round(power_mean,2)}. 
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+**Exercise**
 
-This  tells us that we have a lot  of  uncertainty on the power estimate; this uncertainty is coming from the fact that  we are unsure about the magnitude of the true effect.
+Write a function computepower that can produce a power estimate given a particular effect size. You should be able to write something like
 
-### Computing sample size needed for 80%  power
+computepower(b=.10)
+
+and it  should return the power estimate.
+
+</div>
+
+
+### Computing sample size needed for 80% power
 
 Next, we want to know how many subjects we will need to obtain 80% power. To do this, we will  replicate our existing data frame n times, where n can 2, 3, 4, etc.
 
-For illustration, suppose our data frame is only the Birmingham data. We can use the data.table package to quickly replicate the data frame:
+For illustration, suppose our data frame is only the Birmingham data. 
+
+We can use the data.table package to quickly replicate the data frame. Here is an example of how 
 
 ```{r datareplicationexample}
 library(data.table)
@@ -513,7 +528,7 @@ birm_dat<-dplyr::select(current_lab,
 head(birm_dat)
 ```
 
-Generate replicates of the data
+Generate 3 replicates of the data frame for generating a larger set of simulated data. Note that one has to update the subject ids.
 
 ```{r replicatebirmdata}
 birm_dat<-as.data.table(birm_dat)
@@ -525,25 +540,19 @@ dim(repl_dat)[1]
 
 ## create new subject vector extended n times
 add_id<-rep(seq(100,100*n,by=100),each=dim(birm_dat)[1])
-repl_dat$subj<-rep(birm_dat$subj,n)+add_id
+repl_dat$subj<-rep(as.numeric(as.character(birm_dat$subj)),n)+add_id
 head(repl_dat)
 length(unique(birm_dat$subj))*3
 length(unique(repl_dat$subj))
 ```
 
-```{r computesamplesize,cache=TRUE}
-load("R/gen_sim_norm_samplesize.R")
-## test new function:
-simdat<-gen_sim_normsamplesize(dat=repl_dat,
-               alpha=beta[1],
-               beta=b1, ## using the estimated slope
-               Sigma_u=Sigma_u,Sigma_w=Sigma_w,
-               sigma_e=sigma_e)
+Then we simulate data to compute power for a given sample size:
 
+```{r computesamplesize,cache=TRUE}
 nsim<-100
 tvals<-c()
 for(i in 1:nsim){
-simdat<-gen_sim_normsamplesize(repl_dat,
+simdat<-gen_sim_norm(repl_dat,
                alpha=beta[1],
                beta=b1, ## using the estimated slope
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
@@ -572,12 +581,12 @@ repl_dat<-dat[rep(dat[, .I], nrep)]
 
 ## create new subject vector extended n times
 add_id<-rep(seq(100,100*nrep,by=100),each=dim(dat)[1])
-repl_dat$subj<-rep(dat$subj,nrep)+add_id
-
+repl_dat$subj<-rep(as.numeric(as.character(birm_dat$subj)),
+                   nrep)+add_id
 nsim<-nsims
 tvals<-c()
 for(i in 1:nsim){
-simdat<-gen_sim_normsamplesize(repl_dat,
+simdat<-gen_sim_norm(repl_dat,
                alpha=beta[1],
                beta=b1, ## using the estimated slope
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
@@ -598,21 +607,21 @@ res
 ```{r computesamplesize2,cache=TRUE}
 repl4<-compute_power(dat=birm_dat,
               replicates = 4,
-              nsims=100)
+              nsims=10)
 repl4
 repl6<-compute_power(dat=birm_dat,
               replicates = 6,
-              nsims=100)
+              nsims=10)
 repl6
 ```
 
-Now, with the above code, in principle we can plot the effect of increasing subject sample size on power. I do a simplified version of such a plot below:
+Now, with the above code, in principle we can display the effect of increasing subject sample size on power. Here is a simplified version of such a table:
 
 ```{r powersamplesizeplot}
 results<-rbind(repl4,repl6)
-plot(factor(results[,1]),results[,2],
-     type="p",xlab="subject sample size",
-     ylab="power")
+results<-data.frame(results)
+colnames(results)<-c("nsubj","power estimate")
+kable(results, format = "latex")
 ```
 
 Don't be surprised if the power doesn't go up much with sample size, or if it even goes down with increasing sample size. Because power is being computed using simulated data, we will see some variation in the power calculation from one simulation to another.
@@ -621,9 +630,27 @@ Don't be surprised if the power doesn't go up much with sample size, or if it ev
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
 </style>
 <div class = "blue">
-**Exercise (to do later)**
+**Exercise (to be  done after the workshop)**
 
 This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates of the birmingham data, (use 100 simulations, not 10) and plot power against sample size.
+
+</div>
+
+## Some comments on power
+
+Note here that power computed from the data you already have is called **post-hoc power**, and is pointless to compute; this is because once the p-value is known, power can be computed as a closed form value [@hoenigheisey].  
+
+What we are doing is using existing data to estimate **variance  components**. Then, we use simulation to compute a power *distribution* for a range of plausible values of the effect of interest. The key problem here is figuring out what a plausible range of values of the effect is. Here, we simply used all the available data to get an estimate of the effect. 
+
+A better way to obtain estimates of the effect is by doing a meta-analysis. See @NicenboimPreactivation2019 for an estimate based on a meta-analysis. The estimate based on all publicly available data is: 0.11μV, 95%CrI =[0.05,0.16]. 
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+**Exercise**
+
+Use the existing data and the above meta-analysis estimates to work out estimates of power for a sample size of \Sexpr{334} subjects. Use the mean, lower, and upper bounds of the meta-analysis estimate to work out the power estimates.  
 
 </div>
 
@@ -643,16 +670,146 @@ This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates
 
 # Appendix 1:  Explanation of the function in gen_sim_norm.R
 
-The way I generate data is by walking through the observed data's data frame row by row, and then generating simulated data for each row, using the following pieces of information:
+The way I generate data is by traversing the observed data's data frame row by row, and then generating simulated data for each row, using the following pieces of information:
 
 - the subject id
 - the item id
 - the parameter estimates from the model that was fit on the whole data-set
 
-to-do
+This section presuppose knowledge of how a linear mixed model is ``assembled''. The underlying model is as follows.
+
+i indexes subjects, j items.
+
+\begin{equation}
+y_{ij} = \alpha + u_{0i} + w_{0j} + (\beta + u_{1i} + w_{1j}) * zcloze_{ij} + \varepsilon_{ij}
+\end{equation}
+
+where $\varepsilon_{ij} \sim Normal(0,\sigma)$ and 
+
+\begin{equation}\label{eq:covmat2}
+\Sigma _u
+=
+\begin{pmatrix}
+\sigma _{u0}^2  & \rho _{u}\sigma _{u0}\sigma _{u1}\\
+\rho _{u}\sigma _{u0}\sigma _{u1}    & \sigma _{u1}^2\\
+\end{pmatrix}
+\quad 
+\Sigma _w
+=
+\begin{pmatrix}
+\sigma _{w0}^2  & \rho _{w}\sigma _{w0}\sigma _{w1}\\
+\rho _{w}\sigma _{w0}\sigma _{w1}    & \sigma _{w1}^2\\
+\end{pmatrix}
+\end{equation}
+
+\begin{equation}\label{eq:jointpriordist2}
+\begin{pmatrix}
+  u_0 \\ 
+  u_1 \\
+\end{pmatrix}
+\sim 
+\mathcal{N} \left(
+\begin{pmatrix}
+  0 \\
+  0 \\
+\end{pmatrix},
+\Sigma_{u}
+\right),
+\quad
+\begin{pmatrix}
+  w_0 \\ 
+  w_1 \\
+\end{pmatrix}
+\sim 
+\mathcal{N}\left(
+\begin{pmatrix}
+  0 \\
+  0 \\
+\end{pmatrix},
+\Sigma_{w}
+\right)
+\end{equation}
+
+Given such a mathematical model, we can generate simulated data row by row, given subject and item ids, and given point value estimates for 
+
+- $\alpha$
+- $\beta$
+- $\sigma$
+- $\sigma_{u0},\sigma_{u1},\sigma_{w0},\sigma_{w1}$
+- $\rho_u, \rho_w$
+
+The function first creates subject and item random effects:
+
+```{r generateranefs}
+nsubj<-length(unique(dat$subj))
+nitem<-length(unique(dat$item))
+u<-mvrnorm(n=nsubj, # number of subjects
+             mu=c(0,0),Sigma=Sigma_u)
+w<-mvrnorm(n=nitem, # number of items
+             mu=c(0,0),Sigma=Sigma_w)
+
+## add subject and item id's:
+u<-data.frame(subjid=unique(dat$subj),u)
+w<-data.frame(itemid=unique(dat$item),w)
+
+```
+
+Each row comtains randomly generated intercept and slope adjustments for each of the subjects (items):
+
+```{r}
+head(u)
+head(w)
+```
+
+If we want to know what subject 1's intercept adjustment is, we write:
+
+```{r}
+u[1,2]
+```
+
+If we want to know what subject 1's slope adjustment is, we write:
+
+```{r}
+u[1,3]
+```
+
+Now, for the  data frame ```dat```, we can produce randomly generated data as follows:
+
+```{r}
+dat[1,]
+```
+
+Here, we have subject id 1, and item id 102.  This can be extracted from the data frames u and w.
+
+```{r}
+## intercept adjustment:
+u[u$subjid==1,2]
+## slope adjustment:
+u[u$subjid==1,3]
+```
+
+These simply need to be added to  the fixed effects intercept and slope values:
+
+```{r}
+beta[1] + u[u$subjid==1,2] + w[w$itemid==102,2]+ (beta[2] + u[u$subjid==1,3] + u[u$subjid==1,3] + w[w$itemid==102,3])*dat[1,]$zcloze + rnorm(1,0,sigma_e)
+```
+
+Now, if we repeat this for every row of the data-frame, we can produce simulated data.
 
 # Session information
 
 ```{r sessioninfo}
 sessionInfo()
 ```
+
+# References
+```{r create_r-references}
+r_refs(file = "bibliography.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "bibliography"></div>
+\endgroup
