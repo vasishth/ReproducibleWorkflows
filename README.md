@@ -27,3 +27,11 @@ The steps I will discuss are:
 - Integrating the data analysis into the manuscript
 
 - Releasing data and code: a suggested checklist 
+
+# Lecture Materials
+
+You can download all materials from [here](https://github.com/vasishth/ReproducibleWorkflows/archive/master.zip).
+
+If you use github, the archive can be cloned by typing the following on the command line:
+
+   git clone https://github.com/vasishth/ReproducibleWorkflows.git 
