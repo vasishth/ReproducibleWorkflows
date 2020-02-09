@@ -1,4 +1,4 @@
-# Shravan Vasishth | Workshop: Project Planning - From Experiment Design to Manuscript and Data Release
+# Workshop: Project Planning - From Experiment Design to Manuscript and Data Release
 Event Open Science Initiative
 
     - Date: Feb 12, 2020
