@@ -443,7 +443,7 @@ Incidentally, in order to avoid messages about convergence failures, I am going 
 control=lmerControl(calc.derivs=FALSE)
 ```
 
-This is just for convenience; normally, we would have to worry about convergence problems.
+This is just for convenience; normally, we will have to worry about convergence problems. See @barr2013, @hannesBEAP, @BatesEtAlParsimonious.
 
 #### Computing power distribution for the current sample size
 
@@ -489,35 +489,41 @@ simdat<-gen_sim_norm(dat,
 sim_values[,i]<-simdat$simbase100
 }
 head(sim_values)
-save(sim_values,file="data/sim_values.Rda")
 ```
 
 It is useful to compare real and simulated data, to check if the generative model produces  realistic data.
 
-```{r comparerealsim,fig.height=5,fig.weight=5,eval=FALSE}
+```{r comparerealsim,fig.height=5,fig.weight=5}
 ## Compare fake and simulated data:
-## the observed data:
+## load precomputed simulated values:
 load("data/sim_values.Rda")
-hist(simdat$base100,freq=FALSE,
+## the observed data:
+hist(dat$base100,freq=FALSE,
      ylim=c(0,0.06),
      main="Real vs simulated data",
      xlab="base100")
 ## simulated data:
-for(i in 1:nsim){
+for(i in 1:ncol(sim_values)){
 lines(density(sim_values[,i]),lty=2)
 }
 ```
 
 Here, it looks like the model is producing realistic data.
 
-A critical question here is: what should the estimate of the effect be? Normally, for the problems I study, the estimate would be derived from a computational model or from a meta analysis of existing data. For now, we will take the estimate (mean and SE) from the data; this is just a convenient starting point. We will improve on this later in an exercise.
+A critical question here is: what should the estimate of the effect be? Normally, for the problems I study, the estimate would be derived from a computational model or from a meta-analysis of existing data [@NicenboimPreactivation2019, @JaegerEngelmannVasishth2017, @NicenboimRoettgeretal, @BuerkiEtAl2020]. For now, we will take the estimate (mean and SE) from the data; this is just a convenient starting point. We will improve on this later in an exercise.
 
 ```{r}
 b1<-round(summary(model3a)$coefficients[2,1],3)
 b1se<-round(summary(model3a)$coefficients[2,2],3)
 ```
 
-We can repeatedly (100 times) simulate estimates from the distribution Normal(`r round(b1,2)`,`r round(b1se,2)`). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
+Given these estimates, we can compute the lower and upper bounds of the estimate:
+
+```{r}
+b1-2*b1se; b1+2*b1se
+```
+
+We could repeatedly (100 times) simulate estimates from the distribution Normal(`r round(b1,2)`,`r round(b1se,2)`). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
 
 But the above approach will take a lot of time, so for this demonstration, I would compute the power estimate based only on the estimated mean effect. One could also compute power based on the lower bound and upper bound of the estimated effect (i.e., mean $\pm$ 2$\times$SE).  
 
@@ -731,7 +737,7 @@ div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
 <div class = "blue">
 **Exercise (to be  done after the workshop)**
 
-This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates of the birmingham data, (use 100 simulations, not 10) and plot power against sample size.
+This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates of the Birmingham data, (use 100 simulations, not 10) and plot power against sample size.
 
 </div>
 
@@ -945,6 +951,8 @@ These data look pretty similar to the observed data:
 hist(dat$base100)
 lines(density(simbase100))
 ```
+
+### Why I don't use ready-made packages for computing power
 
 There are ready-made packages in R that generate simulated data from a fitted lmer model. However, I never teach how to use those packages, because the procedure I show you above helps the researcher appreciate the underlying generative process that produced the data. It also allows for more flexible variants on the above approach. For example, if we think like a Bayesian and have a prior distribution on each parameter, we can sample from a prior distribution for the effect size or indeed for any of the variance components. This only takes a small modification of the above code and data. With a ready-made package, you only get what the package developer decided to allow you to do.
 
