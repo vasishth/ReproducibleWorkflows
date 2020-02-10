@@ -378,7 +378,7 @@ Load a function to generate simulated data. I explain the function in the append
 source("R/gen_sim_norm.R")
 ```
 
-```{r producesimulatedvalues,cache=TRUE}
+```{r producesimulatedvalues,eval=FALSE}
 ## Example simulated data, generated several times:
 nsim<-10
 sim_values<-matrix(rep(NA,nsim*dim(dat)[1]),ncol = nsim)
@@ -390,20 +390,22 @@ simdat<-gen_sim_norm(dat,
 sim_values[,i]<-simdat$simbase100
 }
 head(sim_values)
+save(sim_values,file="data/sim_values.Rda")
 ```
 
 It is useful to compare real and simulated data, to check if the generative model produces  realistic data.
 
-```{r comparerealsim,fig.height=5,fig.weight=5}
+```{r comparerealsim,fig.height=5,fig.weight=5,eval=FALSE}
 ## Compare fake and simulated data:
 ## the observed data:
+load("data/sim_values.Rda")
 hist(simdat$base100,freq=FALSE,
      ylim=c(0,0.06),
      main="Real vs simulated data",
      xlab="base100")
 ## simulated data:
 for(i in 1:nsim){
-lines(density(sim_values[,i]),lty=1+i)
+lines(density(sim_values[,i]),lty=2)
 }
 ```
 
@@ -418,7 +420,7 @@ b1se<-round(summary(model3a)$coefficients[2,2],3)
 
 We can repeatedly (100 times) simulate estimates from the distribution Normal(`r round(b1,2)`,`r round(b1se,2)`). Each time that we take a sample, we generate simulated data 100 times, and then compute the proportion of times that the null hypothesis is rejected. This gives us 100 estimates of power; we can plot these estimates as a distribution.
 
-But the above approach will take a lot of time, so for this demonstration, I compute the power for three values: the power estimates based on the estimated mean effect `r b1`. One could also compute power based on the lower `r b1-2*b1se`, and upper bounds `r b1+2*b1se` of the estimated effect.  
+But the above approach will take a lot of time, so for this demonstration, I would compute the power estimate based only on the estimated mean effect. One could also compute power based on the lower bound and upper bound of the estimated effect (i.e., mean $\pm$ 2$\times$SE).  
 
 ```{r poweranalysismean,cache=TRUE}
 ## store for power:
@@ -431,12 +433,14 @@ simdat<-gen_sim_norm(dat,
                beta=b1, ## using the estimated slope
                Sigma_u=Sigma_u,Sigma_w=Sigma_w,
                sigma_e=sigma_e)
-m<-lmer(simbase100~zcloze+(1+zcloze|subj)+(1+zcloze|item),simdat,
+m<-lmer(simbase100~zcloze+(1+zcloze|subj)+
+          (1+zcloze|item),simdat,
         control=lmerControl(calc.derivs=FALSE))
 tvals[i]<-summary(m)$coefficients[2,3]
 }
 power_mean<-mean(abs(tvals)>2)
 power_mean
+save(power_mean,file="data/power_mean.Rda")
 ```
 
 Power for the estimated mean from the existing studies is `r round(power_mean,2)`.
