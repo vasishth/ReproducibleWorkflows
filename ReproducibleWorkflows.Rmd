@@ -780,7 +780,9 @@ Use the existing data and the above meta-analysis estimates to work out estimate
 - Fitting complicated models can lead to problems when compiling an Rmd file. One way around that problem is to save the results (or a summary) of the resulting model offline and to load it when needed. 
 - One irritating problem with R Markdown is that the error messages on compilation failure are often not very informative. One solution to this is to incrementally build the file, using separate ``child'' files. The R Markdown online documentation explains how to do this. Despite the frustration that R Markdown causes, the long-term advantages of using it are great.
 
-# Appendix 1:  Explanation of the function in gen_sim_norm.R
+# Appendix 1  
+
+## Explanation of the function in gen_sim_norm.R
 
 The way I generate data is by traversing the observed data's data frame row by row, and then generating simulated data for each row, using the following pieces of information:
 
@@ -956,7 +958,7 @@ hist(dat$base100)
 lines(density(simbase100))
 ```
 
-### Why I don't use ready-made packages for computing power
+## Why I don't use ready-made packages for computing power
 
 There are ready-made packages in R that generate simulated data from a fitted lmer model. However, I never teach how to use those packages, because the procedure I show you above helps the researcher appreciate the underlying generative process that produced the data. It also allows for more flexible variants on the above approach. For example, if we think like a Bayesian and have a prior distribution on each parameter, we can sample from a prior distribution for the effect size or indeed for any of the variance components. This only takes a small modification of the above code and data. With a ready-made package, you only get what the package developer decided to allow you to do.
 
