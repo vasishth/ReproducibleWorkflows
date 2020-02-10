@@ -17,12 +17,12 @@ authornote: |
     Funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) – Project number 317633480 – SFB 1287, project Q.
  
 abstract: |
-  These are some suggested guidelines on developing a reproducible workflow for  research. The guidelines are not meant to be hard and fast rules, but rather are intended to be suggestions. The ultimate aim of these guidelines is to allow other researchers to examine your data and code, and to use your research results for carrying out further studies. 
+  These are some suggested guidelines on developing a reproducible workflow for carrying out research in any experiimental domain. The guidelines are not meant to be hard and fast rules, but rather are intended to be suggestions. The ultimate aim of these guidelines is to allow the researcher planning a study to have some informed basis for deciding what sample size to choose, to allow anyone in the field to examine and reanalyze your data and code, and to allow anyone to use your research results for carrying out further analyses, such as meta-analyses. 
   
   <!-- https://tinyurl.com/ybremelq -->
   
 keywords          : "data analysis;  open science; transparency; power analysis"
-wordcount         : "4394 words"
+wordcount         : "5352 words"
 
 bibliography      : ["bibliography.bib"]
 
@@ -66,9 +66,19 @@ library(lattice)
 - First version: 8 April 2017 following comments from Nieuwland and others.
 - Revision: 7 Feb 2020. Added power analyses.
 
+# The motivation for these guidelines
+
+As a PhD advisor, I often encounter the following situation: the student carries out a study, and presents their experimental results to me. The code is often not well organized, and almost never documented. Students writing their first paper will often hard-code numerical values such as model estimates in their papers; inevitably, what happens is that something in the data or modeling changes as a result of the reviewing process or due to some other reason (coding errors are common), which then necessitates recopying all the code and data into the paper again. This is very error-prone, not to mention painfully inefficient. It is possible to automate the entire process, as I show below.
+
+As a reviewer and action editor for journals, one problem I face regularly is that I review a paper, but I can't understand what statistical models the authors actually fit. Often I can't even figure out what the estimates of the effect were, because people usually don't even reveal basic information about the effect (such as the estimated coefficient and the standard error of the estimate; or what the parameter estimates of the different variance components were). 
+
+As a researcher, I carry out a lot of meta-analyses. Whenever I ask a researcher for the data and code behind the paper, I am usually met with silence, or some reason why the data or code cannot be released. In my experience, only about 25% of researchers are able to release their data and code. **Not providing the data and code that lie behind a paper is a waste of research funds**. It leads to loss of information, and prevents us from incrementally building up our knowledge about a research problem. To see how valuable meta-analyses are, see some of our recent work: @NicenboimPreactivation2019, @JaegerEngelmannVasishth2017, @NicenboimRoettgeretal, @BuerkiEtAl2020. You can also watch a talk I recently gave that spells out the importance of meta-analysis in computational modeling:  https://youtu.be/UfB6JYaIY9I.
+
+This tutorial aims to provide some suggestions on how to develop a reasonably reproducible workflow, which will allow future you and other researchers to revisit your work, and to build on it. As an example, I will use a replication attempt by Nieuwland et al of a famous EEG study from Marta Kutas' lab.
+
 # Introduction: DeLong et al 2005 replication
 
-Recently, [Nieuwland et al](http://biorxiv.org/content/early/2017/02/25/111807) carried out an interesting series of replication attempts of the [DeLong et al 2005](http://search.proquest.com/openview/f549a27edaad0cedad040e0df278f9ec/1?pq-origsite=gscholar&cbl=44706) Nature Neuroscience paper. 
+Recently, @nieuwland2018large ([see here](https://elifesciences.org/articles/33468)) carried out an interesting series of replication attempts of the @DeLong2005 study ([see here](http://search.proquest.com/openview/f549a27edaad0cedad040e0df278f9ec/1?pq-origsite=gscholar&cbl=44706)) Nature Neuroscience paper. 
 
 DeLong and colleagues examined the effect of predicting an upcoming noun at the determiner region that precedes the noun. Consider the sentences below:
 
@@ -82,9 +92,13 @@ DeLong and colleagues examined the effect of predicting an upcoming noun at the 
 
 Participants were shown sentences ending with a predictable noun phrase, such as *'a kite'* in (\@ref(ex:delongP)), or an unpredictable one, such as *'an airplane'* in (\@ref(ex:delongU)). 
 
-In both examples, the determiners preceding the critical noun have the same meaning, so  there should  be no difference between the fit of *'a'* and *'an'* to the semantic context (i.e., both determiners should  incur the same integration costs). DeLong and colleagues showed that the amplitude of the negativity was smaller with increasing cloze probability at the determiner (and also at the noun; but that effect is expected given prior work, so not so surprising). 
+In both examples, the determiners preceding the critical noun have the same meaning, so  there should  be no difference between the fit of *'a'* and *'an'* to the semantic context (i.e., both determiners should  incur the same integration costs). DeLong and colleagues showed that the amplitude of the negativity was smaller (becomes more positive) with increasing cloze probability at the determiner (and also at the noun; but that effect is expected given prior work, so not so surprising). 
 
-Nieuwland et al report a failure to replicate the original effect. Here, we focus only on the article data from the Nieuwland et al study. First, let's look at how Nieuwland et al made their data and code available; they did this even before the paper was published. 
+Nieuwland et al report a failure to replicate the original effect. Here, we focus only on the article data from the Nieuwland et al study. 
+
+Incidentally, DeLong et al never released their data, even though they have it available in a form that could be made available publicly. This sort of situation should never happen; data and code should be made available routinely with a published paper. I believe that leading journals like the *Journal of Memory and Language* now require data and code release, unless there is a compelling reason (e.g., privacy issues)  not to make the data public.
+
+Nieuwland et al's work is exemplary in this respect; they  publicly released their data and code even before the paper was accepted. First, let's look at how Nieuwland et al made their data and code available. 
 
 ## Data and code from Nieuwland et al
 
@@ -125,11 +139,12 @@ Here are Nieuwland et al's data and code.
 
 **What is missing here is a README file. Many of the filenames are essentially self-explanatory, but not all.**
 
-## The R code
+## The R code file
 
 The R code is presented as a file called public_script.txt.
 
 Some suggestions for improvement:
+
 - An R markdown file would have allowed the reader to see the precomputed output. One can always extract the R code from an R Markdown file called, say, yourfile.Rmd, by doing:
 
 ```
@@ -194,13 +209,24 @@ Four linear mixed models are fit for the determiner. Most of the models fail to 
 
 ```{r articleanalysis,cache=TRUE}
 # article models
-model1a <- lmer(base100 ~ lab*zcloze + ( zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = articles , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model1a <- lmer(base100 ~ lab*zcloze + 
+                  ( zcloze | subject) + (zcloze  | item),
+                contrasts=list( lab=contr.sum(9) ), data = articles , 
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
 
-model2a <- lmer(base100 ~ lab/zcloze + ( zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = articles , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model2a <- lmer(base100 ~ lab/zcloze + 
+                  ( zcloze | subject) + (zcloze  | item), 
+                contrasts=list( lab=contr.sum(9) ), data = articles , 
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
 
-model3a <- lmer(base100 ~  zcloze + ( zcloze | subject) + (zcloze  | item),  data = articles, control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model3a <- lmer(base100 ~  zcloze + ( zcloze | subject) +
+                  (zcloze  | item),  
+                data = articles,
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
 
-model4a <- lmer(base100 ~         ( zcloze | subject) + (zcloze  | item),  data = articles ,  control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model4a <- lmer(base100 ~         ( zcloze | subject) +
+                  (zcloze  | item),  data = articles ,
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
 
 # compare models
 anova(model1a,model2a)
@@ -209,7 +235,7 @@ anova(model1a,model2a)
 
 Linear mixed models for the noun:
 
-```{r nounanalysis,cache=TRUE}
+```{r nounanalysis,cache=TRUE,eval=FALSE}
 ########################
 #### NOUNS
 
@@ -224,39 +250,76 @@ nouns$zcloze <- scale(nouns$cloze, center = TRUE, scale = TRUE)
 clozemean <- mean( nouns$cloze, na.rm=T )
 clozesd <- sd( nouns$cloze, na.rm=T )
 
-model1n <- lmer(n400 ~  lab*zcloze + ( zcloze | subject) + ( zcloze  | item), contrasts=list( lab=contr.sum(9) ),data = nouns , control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
-model2n <- lmer(n400 ~  lab + zcloze + (zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
-model3n <- lmer(n400 ~  zcloze + (zcloze | subject) + (zcloze  | item), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
-model4n <- lmer(n400 ~   (zcloze | subject) + (zcloze  | item), data = nouns , control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+model1n <- lmer(n400 ~  lab*zcloze + 
+                  ( zcloze | subject) + ( zcloze  | item), contrasts=list( lab=contr.sum(9) ),
+                data = nouns , 
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model2n <- lmer(n400 ~  lab + zcloze + 
+                  (zcloze | subject) + (zcloze  | item), contrasts=list( lab=contr.sum(9) ), 
+                data = nouns , 
+                control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+model3n <- lmer(n400 ~  zcloze + 
+                  (zcloze | subject) + (zcloze  | item), data = nouns , 
+                control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
+model4n <- lmer(n400 ~   
+                  (zcloze | subject) + (zcloze  | item), data = nouns , 
+                control=lmerControl(optCtrl=list(maxfun=1e9)), REML = FALSE )
 
 # compare models
 anova(model1n,model2n)
 
 ```
 
-## Results at the determiner
+## Results for the determiner
 
 Let's focus on just one of the models:
 
 ```{r model3a}
-model3a <- lmer(base100 ~  zcloze + ( zcloze | subject) + (zcloze  | item),  data = articles, control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
-summary(model3a)
+model3a <- lmer(base100 ~  zcloze + 
+                  ( zcloze | subject) + (zcloze  | item),  
+                data = articles, 
+                control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+model3aNULL <- lmer(base100 ~  1 + 
+                      ( zcloze | subject) + (zcloze  | item),  
+                    data = articles, 
+                    control=lmerControl(optCtrl=list(maxfun=1e5)), REML = FALSE )
+anova(model3a,model3aNULL)
 ```
+
+There doesn't seem to be evidence for zcloze affecting the response.
+
+One useful thing to look at is the u0 and u1 values for each participant and item:
+
+```{r dotplotmodel3a,fig.height=10,fig.width=8}
+print(dotplot(ranef(model3a,condVar=TRUE)))
+```
+
+There are more sophisticated ways to plot individual level effects. See our Bayesian modeling lecture notes [here](https://vasishth.github.io/Bayes_CogSci/);  see section [5.1.3](https://vasishth.github.io/Bayes_CogSci/a-hierarchical-normal-model-the-n400-effect.html#sec:uncorrelated).
 
 # Planning a future study based on existing data
 
 This assumes a frequentist analysis.
 
-We will
+We will:
 
 - begin with the existing data from Nieuwland et al 2018
 - first visualize the data
 - then use all available data to compute an estimate of the effect (meta-analysis)
-- compute sample size needed to achieve 80% power
+- compute sample size needed to achieve 80% power using simulation
 - carry out new study
 - an alternative Bayesian approach would be to use the estimate of the effect from the previous studies as an informative prior in a Bayesian analysis.
 
-## Subset the existing data
+## Simulating data is a very important skill
+
+One skill we will learn here is how to simulate data that reflects the underlying generative process we are assuming from our experiment. Simulating data is a very important skill for the data analyst because:
+
+- one can determine whether the model we have specified for data analysis is sensible (generates reasonable data)
+- one can determine whether the model we have specified can in principle recover the parameters of interest under repeated sampling
+- one can easily do power calculations (although this can take some time to compute for complex models)
+
+## Case study: The Niewland et al study data
+
+### Subset the existing data
 
 First, choose the relevant columns:
 
@@ -278,7 +341,7 @@ dat<-dat2
 head(dat)
 ```
 
-## Visualize the data by subject and by item
+### Visualize the data by subject and by item
 
 There is data from 9 labs. We can look at the by-subjects data for each lab. For example, here is the data from Birmingham.
 
@@ -296,13 +359,47 @@ xyplot(base100~zcloze|subj,current_lab,
        },main="By subjects data")
 ```
 
-```{r byitem,,fig.width=7,fig.height=7}
+```{r byitem,fig.width=7,fig.height=7}
 xyplot(base100~zcloze|item,
        current_lab,
        panel = function(x, y) {
          panel.xyplot(x, y)
          panel.abline(lm(y ~ x))
        },,main="By items data")
+```
+
+One can do this in ggplot as well. First, we define a function that mimics the lattice plot. I got this code from someone on twitter but I lost the source.
+
+```{r definexyplotfunction}
+gg_xyplot <- function(x, y, formula, shape, size, 
+                      xlabel="zcloze", 
+                      ylabel="base100 (microvolts)",
+                      data=current_lab){
+    ggplot(data = data, aes(x = data[,x],
+                            y = data[,y]))  +
+    facet_wrap(formula) +
+    geom_smooth(method="lm")+
+    geom_point(color = "blue", 
+               shape = shape, size = size) +
+    theme(panel.grid.minor = element_blank()) +
+    theme_bw() +
+    ylab(ylabel) +
+    xlab(xlabel)
+}
+```
+
+```{r ggxyplotsubj,fig.width=7,fig.height=7}
+gg_xyplot(x = "zcloze", y = "base100",  ~ subj,  
+          shape = 1, size = 3, 
+          data = current_lab)
+          
+```
+
+```{r ggxyplotitem,fig.width=7,fig.height=7}
+gg_xyplot(x = "zcloze", y = "base100",  ~ item,  
+          shape = 1, size = 3, 
+          data = current_lab)
+          
 ```
 
 One problem with the above visualizations is that we would have to plot nine labs' plots separately and not get an overall impression of the by-subject variability in the zcloze effect. 
@@ -334,9 +431,11 @@ p<-ggplot(slopes_summary,aes(x=subjects, y=means)) +
 p
 ```
 
-## Power analyses
+Notice that there is a lot of variability across the subjects (each subject's data is being analyzed separately). Some show negative effects, some show the expected positive effects.  This kind of oscillation is characteristic of low power experiments; the overall experiment by Nieuwland et al might not be low power, but analyzing each subject separately definitely is going to lead to an underpowered design! See @gelmancarlin for discussion on how this kind of oscillation of the effects around 0 happens.
 
-In order to understand the simulation approach I take here, it is important to understand how linear mixed models work. Here, we are going to switch to the slides accompanying this file, on linear mixed models introduction.
+### Power analyses
+
+In order to understand the simulation approach I take here, it is important to understand how linear mixed models work. Here, we are going to switch to the slides [accompanying this file, on linear mixed models introduction](https://github.com/vasishth/ReproducibleWorkflows/blob/master/LinearMixedModels/LinearMixedModels.pdf).
 
 Incidentally, in order to avoid messages about convergence failures, I am going to add the following to the lmer function:
 
@@ -346,9 +445,9 @@ control=lmerControl(calc.derivs=FALSE)
 
 This is just for convenience; normally, we would have to worry about convergence problems.
 
-### Computing power distribution for the current sample size
+#### Computing power distribution for the current sample size
 
-#### Step 1: Extract estimates
+##### Step 1: Extract estimates
 
 First, we extract the estimated parameter values from the model  that was fit to the whole data-set:
 
@@ -370,7 +469,7 @@ Sigma_w<-SIN::sdcor2cov(stddev=item_ranefsd,
                         corr=item_ranefcorr)
 ```
 
-#### Step 2: Generate simulated data using estimates, compute power (or Type I error):
+##### Step 2: Generate simulated data using estimates, compute power (or Type I error):
 
 Load a function to generate simulated data. I explain the function in the appendix.
 
@@ -493,18 +592,18 @@ In summary, the power estimate for the mean is `r round(power_mean,2)`. If you r
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
 </style>
 <div class = "blue">
-**Exercise**
+#### Exercise
 
 Write a function computepower that can produce a power estimate given a particular effect size. You should be able to write something like
 
-computepower(b=.10)
+computepower(b=0.10)
 
-and it  should return the power estimate.
+and it  should return the power estimate for the effect size  estimate 0.10 microvolts.
 
 </div>
 
 
-### Computing sample size needed for 80% power
+#### Computing sample size needed for 80% power
 
 Next, we want to know how many subjects we will need to obtain 80% power. To do this, we will  replicate our existing data frame n times, where n can 2, 3, 4, etc.
 
@@ -638,17 +737,19 @@ This exercise should be done overnight! Compute power for 2,4,6,8,10  replicates
 
 ## Some comments on power
 
-Note here that power computed from the data you already have is called **post-hoc power**, and is pointless to compute; this is because once the p-value is known, power can be computed as a closed form value [@hoenigheisey].  
+Note here that power computed from the data you already have is called **post-hoc power**, and is pointless to compute; this is because once the p-value is known, power can be computed analytically [@hoenigheisey].  In other words, post-hoc power is just a transform of the observed p-value.
 
-What we are doing is using existing data to estimate **variance  components**. Then, we use simulation to compute a power *distribution* for a range of plausible values of the effect of interest. The key problem here is figuring out what a plausible range of values of the effect is. Here, we simply used all the available data to get an estimate of the effect. 
+What we are doing here is using existing data to estimate **variance  components**. Then, we use simulation to compute a power *distribution* for a range of plausible values of the effect of interest. 
 
-A better way to obtain estimates of the effect is by doing a meta-analysis. See @NicenboimPreactivation2019 for an estimate based on a meta-analysis. The estimate based on all publicly available data is: 0.11 microvolts, 95% credible intervals [0.05,0.16]. 
+The key problem here is figuring out what a plausible range of values of the effect is. Here, we have simply used all the available data to get an estimate of the effect. This makes our power analysis look like a post-hoc power calculation. But I used the observed estimates of the effect here just as an example.
+
+In realistic data, a better way to obtain estimates of the effect is by doing a meta-analysis. See @NicenboimPreactivation2019 for an estimate based on a meta-analysis. The estimate based on all publicly available data is: 0.11 microvolts, 95% credible intervals [0.05,0.16]. One can use that to compute power. 
 
 <style>
 div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
 </style>
 <div class = "blue">
-**Exercise**
+### Exercise
 
 Use the existing data and the above meta-analysis estimates to work out estimates of power for a sample size of 334 subjects. Use the mean, lower, and upper bounds of the meta-analysis estimate to work out the power estimates.  
 
@@ -666,7 +767,8 @@ Use the existing data and the above meta-analysis estimates to work out estimate
 - At the end of the R Markdown file, provide session information using SessionInfo().
 - Make sure that your R Markdown file runs! Ideally, download all the code and data onto another machine and check that it runs.
 -  If you have very large files that can't be saved on github, osf, etc., then store them on a (university) server and link to the files. Example: https://osf.io/reavs/
-
+- Fitting complicated models can lead to problems when compiling an Rmd file. One way around that problem is to save the results (or a summary) of the resulting model offline and to load it when needed. 
+- One irritating problem with R Markdown is that the error messages on compilation failure are often not very informative. One solution to this is to incrementally build the file, using separate ``child'' files. The R Markdown online documentation explains how to do this. Despite the frustration that R Markdown causes, the long-term advantages of using it are great.
 
 # Appendix 1:  Explanation of the function in gen_sim_norm.R
 
@@ -773,13 +875,12 @@ If we want to know what subject 1's slope adjustment is, we write:
 u[1,3]
 ```
 
-Now, for the  data frame ```dat```, we can produce randomly generated data as follows:
+Now, for the first row of the  data frame ```dat```: 
 
 ```{r}
 dat[1,]
 ```
-
-Here, we have subject id 1, and item id 102.  This can be extracted from the data frames u and w.
+we can produce randomly generated data as follows. In this row, we have subject id 1, and item id 102.  This can be extracted from the data frames u and w.
 
 ```{r}
 ## intercept adjustment:
@@ -791,10 +892,61 @@ u[u$subjid==1,3]
 These simply need to be added to  the fixed effects intercept and slope values:
 
 ```{r}
-beta[1] + u[u$subjid==1,2] + w[w$itemid==102,2]+ (beta[2] + u[u$subjid==1,3] + u[u$subjid==1,3] + w[w$itemid==102,3])*dat[1,]$zcloze + rnorm(1,0,sigma_e)
+beta[1] + u[u$subjid==1,2] + 
+  w[w$itemid==102,2]+ 
+  (beta[2] + 
+     u[u$subjid==1,3] +
+     w[w$itemid==102,3])*dat[1,]$zcloze +
+  rnorm(1,0,sigma_e)
 ```
 
-Now, if we repeat this for every row of the data-frame, we can produce simulated data.
+Now, if we repeat this for every row of the data-frame, we can produce simulated data. Obviously, we cannot write the subject and item id by hand for each row. But we can automatically extract it from the data frame ```dat```:
+
+```{r}
+dat[1,]$subj
+dat[1,]$item
+```
+
+Thus, for each row, we can extract the subject and item id by indexing the row id with i ranging from 1 to the total number of rows N, and then plugging in that value into the equation below. I show what happens with i=1:
+
+```{r}
+i<-1
+current_subjid<-dat[i,]$subj
+current_itemid<-dat[i,]$item
+
+beta[1] + u[u$subjid==current_subjid,2] +
+  w[w$itemid==current_itemid,2]+ 
+  (beta[2] + u[u$subjid==current_subjid,3] +
+      w[w$itemid==current_itemid,3])*dat[i,]$zcloze + rnorm(1,0,sigma_e)
+```
+
+Now, if we change the index i to 2 (this is an exercise for you), we get the simulated value for row 2. 
+
+One can now generalize this, and write a for-loop that traverses every row of the data frame:
+
+```{r}
+## number of rows
+N<-dim(dat)[1]
+# save vector of simulated data:
+simbase100 <- rep(NA,N)
+for(i in 1:N){
+current_subjid<-dat[i,]$subj
+current_itemid<-dat[i,]$item
+simbase100[i] <-  beta[1] + u[u$subjid==current_subjid,2] +
+  w[w$itemid==current_itemid,2]+ 
+  (beta[2] + u[u$subjid==current_subjid,3] +
+      w[w$itemid==current_itemid,3])*dat[i,]$zcloze + rnorm(1,0,sigma_e)
+}
+```
+
+These data look pretty similar to the observed data:
+
+```{r}
+hist(dat$base100)
+lines(density(simbase100))
+```
+
+There are ready-made packages in R that generate simulated data from a fitted lmer model. However, I never teach how to use those packages, because the procedure I show you above helps the researcher appreciate the underlying generative process that produced the data. It also allows for more flexible variants on the above approach. For example, if we think like a Bayesian and have a prior distribution on each parameter, we can sample from a prior distribution for the effect size or indeed for any of the variance components. This only takes a small modification of the above code and data. With a ready-made package, you only get what the package developer decided to allow you to do.
 
 # Session information
 
@@ -803,7 +955,7 @@ sessionInfo()
 ```
 
 # References
-```{r create_r-references}
+```{r create_r-references,echo=FALSE}
 r_refs(file = "bibliography.bib")
 ```
 
