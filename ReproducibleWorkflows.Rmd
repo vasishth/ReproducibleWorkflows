@@ -61,10 +61,14 @@ library(ggplot2)
 library(lattice)
 ```
 
-# Revision history
+# Revision history and online repository
 
 - First version: 8 April 2017 following comments from Nieuwland and others.
-- Revision: 7 Feb 2020. Added power analyses.
+- Revision: 10 Feb 2020. Added power analyses.
+
+All code and data are available from: 
+
+https://vasishth.github.io/ReproducibleWorkflows/
 
 # The motivation for these guidelines
 
